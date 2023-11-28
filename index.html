@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top" />
+  </head>
+  <style>
+    form {
+      padding: 0.375rem 0.625rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    label {
+      color: #121212;
+      font-size: 14px;
+      font-weight: 500;
+      align-self: flex-start;
+    }
+
+    #copied-text {
+      resize: none;
+      width: 100%;
+      height: 14rem;
+      border: 1px solid #d5d5d5;
+      outline: none;
+      padding: 0.375rem 0.75rem;
+      margin-bottom: 12px;
+    }
+
+    #generated-text {
+      resize: none;
+      width: 100%;
+      height: 14rem;
+      border: 1px solid #d5d5d5;
+      outline: none;
+      padding: 0.375rem 0.75rem;
+      margin-bottom: 12px;
+    }
+
+    #run-generation {
+      border-radius: 7px;
+      cursor: pointer;
+      border: none;
+      outline: none;
+      text-transform: uppercase;
+      background-color: royalblue;
+      color: whitesmoke;
+      padding: 0.375rem 0.75rem;
+    }
+    #insert-text {
+      border-radius: 7px;
+      cursor: pointer;
+      border: none;
+      outline: none;
+      background-color: #eee;
+      color: #000;
+      text-transform: uppercase;
+      padding: 0.375rem 0.75rem;
+    }
+  </style>
+  <body>
+    <form id="reponse-form">
+      <label for="copied-text">Your Text</label>
+      <textarea
+        class="width-100"
+        id="copied-text"
+        rows="10"
+        placeholder="Select the text you want to generate and hit generate..."
+      ></textarea>
+      <label for="generated-text">Generated Text</label>
+      <textarea
+        class="width-100"
+        id="generated-text"
+        rows="10"
+        placeholder="Your generated text will be displayed here..."
+      ></textarea>
+      <div id="button-bar">
+        <button id="run-generation">Generate</button>
+        <button id="insert-text">Insert</button>
+      </div>
+    </form>
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+    <script>
+      const btnGenerate = document.getElementById("run-generation");
+      let copiedTextEl = document.getElementById("copied-text");
+      let genTextEl = document.getElementById("generated-text");
+
+      $(function () {
+        $("#run-generation").click(runGeneration);
+        $("#insert-text").click(insertText);
+      });
+
+      function runGeneration() {
+        this.disabled = true;
+        $("#error").remove();
+        google.script.run
+          .withSuccessHandler(function (textAndTranslation, element) {
+            let textData = textAndTranslation.text;
+            console.log("run generate", textData);
+            $("#copied-text").val(textData);
+            element.disabled = false;
+
+            fetchData(textData);
+          })
+          .withFailureHandler(function (msg, element) {
+            showError(msg, $("#button-bar"));
+            element.disabled = false;
+          })
+          .withUserObject(this)
+          .getTextAndTranslation();
+      }
+
+      function insertText() {
+        this.disabled = true;
+        $("#error").remove();
+        google.script.run
+          .withSuccessHandler(function (returnSuccess, element) {
+            element.disabled = false;
+          })
+          .withFailureHandler(function (msg, element) {
+            showError(msg, $("#button-bar"));
+            element.disabled = false;
+          })
+          .withUserObject(this)
+          .insertText($("#generated-text").val());
+      }
+
+      function showError(msg, element) {
+        const div = $('<div id="error" class="error">' + msg + "</div>");
+        $(element).after(div);
+      }
+
+      // calling api
+      function fetchData(item) {
+        console.log("input item", item);
+        let token = localStorage.getItem("token");
+        var myHeaders = new Headers();
+        myHeaders.append("Content-Type", "application/x-www-form-urlencoded");
+        myHeaders.append("Authorization", "Bearer " + token);
+
+        var urlencoded = new URLSearchParams();
+        urlencoded.append("session_id", "sessionId");
+        urlencoded.append("query", item);
+
+        var requestOptions = {
+          method: "POST",
+          headers: myHeaders,
+          body: urlencoded,
+          redirect: "follow",
+        };
+
+        console.log("Request Options", requestOptions);
+
+        fetch(
+          "https://belonggaiapi.think201.xyz/analyze/response",
+          requestOptions
+        )
+          .then((response) => {
+            return response.json();
+          })
+          .then(async (data) => {
+            genTextEl.value = data.body.response;
+          });
+      }
+    </script>
+  </body>
+</html>
